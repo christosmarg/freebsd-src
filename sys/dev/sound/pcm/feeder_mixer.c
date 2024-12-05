@@ -59,11 +59,13 @@ feed_mixer_##SIGN##BIT##ENDIAN(uint8_t *src, uint8_t *dst,		\
 		src -= PCM_##BIT##_BPS;					\
 		dst -= PCM_##BIT##_BPS;					\
 		count -= PCM_##BIT##_BPS;				\
-		x = PCM_READ_##SIGN##BIT##_##ENDIAN(src);		\
-		y = PCM_READ_##SIGN##BIT##_##ENDIAN(dst);		\
+		x = pcm_sample_read_24bit(src,				\
+		    AFMT_##SIGN##BIT##_##ENDIAN);			\
+		y = pcm_sample_read_24bit(dst,				\
+		    AFMT_##SIGN##BIT##_##ENDIAN);			\
 		z = INTPCM##BIT##_T(x) + y;				\
 		x = PCM_CLAMP_##SIGN##BIT(z);				\
-		_PCM_WRITE_##SIGN##BIT##_##ENDIAN(dst, x);		\
+		pcm_sample_write(dst, x, AFMT_##SIGN##BIT##_##ENDIAN);	\
 	} while (count != 0);						\
 }
 
