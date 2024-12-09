@@ -2109,21 +2109,20 @@ chn_setparam(struct pcm_channel *c, uint32_t format, uint32_t speed)
 int
 chn_setspeed(struct pcm_channel *c, uint32_t speed)
 {
-	uint32_t oldformat, oldspeed, format;
+	uint32_t oldformat, oldspeed;
 	int ret;
 
 	oldformat = c->format;
 	oldspeed = c->speed;
-	format = oldformat;
 
-	ret = chn_setparam(c, format, speed);
+	ret = chn_setparam(c, c->format, speed);
 	if (ret != 0) {
 		if (snd_verbose > 3)
 			device_printf(c->dev,
 			    "%s(): Setting speed %d failed, "
 			    "falling back to %d\n",
 			    __func__, speed, oldspeed);
-		chn_setparam(c, c->format, oldspeed);
+		chn_setparam(c, oldformat, oldspeed);
 	}
 
 	return (ret);
@@ -2132,7 +2131,7 @@ chn_setspeed(struct pcm_channel *c, uint32_t speed)
 int
 chn_setformat(struct pcm_channel *c, uint32_t format)
 {
-	uint32_t oldformat, oldspeed, speed;
+	uint32_t oldformat, oldspeed;
 	int ret;
 
 	/* XXX force stereo */
@@ -2143,9 +2142,8 @@ chn_setformat(struct pcm_channel *c, uint32_t format)
 
 	oldformat = c->format;
 	oldspeed = c->speed;
-	speed = oldspeed;
 
-	ret = chn_setparam(c, format, speed);
+	ret = chn_setparam(c, format, c->speed);
 	if (ret != 0) {
 		if (snd_verbose > 3)
 			device_printf(c->dev,
