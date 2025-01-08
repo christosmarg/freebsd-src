@@ -1,5 +1,9 @@
 /*-
  * Copyright 2008 John Birrell <jb@FreeBSD.org>
+ * Copyright (c) 2023 The FreeBSD Foundation
+ *
+ * Portions of this software were developed by Christos Margiolis
+ * <christos@FreeBSD.org> under sponsorship from the FreeBSD Foundation.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +37,7 @@
 #include <sys/module.h>
 #include <sys/sdt.h>
 #include <sys/sysctl.h>
+#include <sys/time.h>
 #include <sys/vnode.h>
 
 SDT_PROVIDER_DEFINE(test);
@@ -90,6 +95,56 @@ dtrace_test_argtest(SYSCTL_HANDLER_ARGS)
 	return (error);
 }
 
+static __always_inline void
+kinst_test_inline(void)
+{
+	struct timeval tv;
+	size_t len;
+
+	/*
+	 * TODO Modify the code so that the function is splitted into multiple
+	 * DW_AT_ranges.
+	 */
+	len = sizeof(struct timeval);
+	if (kernel_sysctlbyname(curthread, "kern.boottime", &tv, &len,
+	    NULL, 0, NULL, 0) != 0)
+		return;
+}
+
+static __noinline void
+kinst_test_fbtconvert(void)
+{
+	struct timeval tv;
+	size_t len;
+
+	len = sizeof(struct timeval);
+	(void) kernel_sysctlbyname(curthread, "kern.boottime", &tv, &len,
+	    NULL, 0, NULL, 0);
+}
+
+static int
+kinst_test(SYSCTL_HANDLER_ARGS)
+{
+	int val, error;
+
+	val = 0;
+	error = sysctl_handle_int(oidp, &val, 0, req);
+	if (error || req->newptr == NULL)
+		return (error);
+	switch (val) {
+	case 1:
+		kinst_test_inline();
+		break;
+	case 2:
+		kinst_test_fbtconvert();
+		break;
+	default:
+		return (0);
+	}
+
+	return (error);
+}
+
 static SYSCTL_NODE(_debug, OID_AUTO, dtracetest,
     CTLFLAG_RD | CTLFLAG_MPSAFE, 0,
     "");
@@ -102,6 +157,9 @@ SYSCTL_PROC(_debug_dtracetest, OID_AUTO, fbttest,
     CTLTYPE_INT | CTLFLAG_MPSAFE | CTLFLAG_RW, NULL, ARGTEST_FBT,
     dtrace_test_argtest,
     "I", "Trigger the FBT test probe");
+SYSCTL_PROC(_debug_dtracetest, OID_AUTO, kinst,
+    CTLTYPE_INT | CTLFLAG_MPSAFE | CTLFLAG_RW, NULL, 0, kinst_test,
+    "I", "Trigger the kinst test functions");
 
 static int
 dtrace_test_modevent(module_t mod, int type, void *data)

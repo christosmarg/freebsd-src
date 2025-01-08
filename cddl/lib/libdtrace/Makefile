@@ -146,7 +146,7 @@ CFLAGS+=	-fsanitize=address -fsanitize=undefined
 LDFLAGS+=	-fsanitize=address -fsanitize=undefined
 .endif
 
-LIBADD=	ctf elf proc pthread rtld_db xo
+LIBADD=	ctf dwarf elf proc pthread rtld_db xo
 
 CLEANFILES=	dt_errtags.c dt_names.c
 
