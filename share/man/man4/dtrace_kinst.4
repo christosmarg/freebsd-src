@@ -1,5 +1,8 @@
 .\" Copyright (c) 2022 Christos Margiolis <christos@FreeBSD.org>
-.\" All rights reserved.
+.\" Copyright (c) 2023 The FreeBSD Foundation
+.\"
+.\" Portions of this documentation were written by Christos Margiolis
+.\" <christos@FreeBSD.org> under sponsorship from the FreeBSD Foundation.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -22,21 +25,34 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 27, 2023
+.Dd July 14, 2023
 .Dt DTRACE_KINST 4
 .Os
 .Sh NAME
 .Nm dtrace_kinst
-.Nd a DTrace provider for tracing arbitrary instructions in a given kernel function
+.Nd a DTrace provider for tracing arbitrary instructions in the kernel
 .Sh SYNOPSIS
 kinst::<function>:<instruction>
 .Sh DESCRIPTION
-The DTrace
+The
 .Nm kinst
-provider allows the user to trace any instruction in a given kernel function.
-<function> corresponds to the function to be traced, and <instruction> is the
-offset to the specific instruction, and can be obtained from the function's
-disassembly using kgdb from the gdb package.
+DTrace provider allows the user to trace any instruction in a kernel function.
+.Cm <function>
+corresponds to the function to be traced, and
+.Cm <instruction>
+is the
+offset to the specific instruction, relative to the beginning of the function.
+.Pp
+.Nm kinst
+can also trace inline functions by requesting a probe of the form
+.Cm kinst::<inline_func>:<entry|return> .
+If the probe is
+.Cm entry
+or
+.Cm return
+but the function is not an inline one, the probe will be delegated to FBT,
+otherwise DTrace will find all call sites of the inline function and create new
+probes for each one of them.
 .Pp
 .Nm kinst
 creates probes on-demand, meaning it searches for and parses the function's
@@ -51,7 +67,47 @@ A result of this is that
 .Cm dtrace -l -P kinst
 will not match any probes.
 .Sh IMPLEMENTATION NOTES
-The provider is currently implemented only for amd64.
+.Nm kinst
+is supported on the amd64, arm64 and riscv platforms.
+.Pp
+The following table lists functions that are not safe to trace:
+.Bl -column "cpu_exception_handler_supervisor"
+.It Sy Function Ta Sy Architecture
+.It cpu_switch Ta all
+.It db_* Ta all
+.It dtrace_* Ta all
+.It kdb_* Ta all
+.It kinst_* Ta all
+.It owner_mtx Ta all
+.It owner_rm Ta all
+.It owner_rw Ta all
+.It owner_sx Ta all
+.It trap_check Ta all
+.It do_el0_sync Ta arm64
+.It do_el1h_sync Ta arm64
+.It handle_el0_sync Ta arm64
+.It handle_el1h_sync Ta arm64
+.It cpu_exception_handler Ta riscv
+.It cpu_exception_handler_supervisor Ta riscv
+.It cpu_exception_handler_user Ta riscv
+.It do_trap_supervisor Ta riscv
+.It do_trap_user Ta riscv
+.El
+.Pp
+All ports also do not trace functions that do not start with the usual function
+prologue for each architecture, as those functions usually correspond to
+exception handlers and functions that are generally not safe to trace.
+.Pp
+The following table lists instructions that are not safe to trace:
+.Bl -column "LDX/STX blocks (LDX and STX included)"
+.It Sy Instruction Ta Sy Architecture
+.It POPF Ta amd64
+.It STI Ta amd64
+.It LDX/STX blocks (LDX and STX included) Ta arm64
+.It ADR and ADRP (see BUGS) Ta arm64
+.It SYSTEM instructions Ta riscv
+.It LR/SC blocks (LR and SC included) Ta riscv
+.El
 .Sh EXAMPLES
 Find the offset corresponding to the third instruction in
 .Fn vm_fault
@@ -70,16 +126,54 @@ Dump of assembler code for function vm_fault:
   2  81500                       vm_fault:4 0x1fab9bef0000
   2  81500                       vm_fault:4 0xe16cf749000
   0  81500                       vm_fault:4 0x13587c366000
-  ...
+  ^C
 .Ed
 .Pp
 Trace all instructions in
 .Fn amd64_syscall :
 .Bd -literal -offset indent
 # dtrace -n 'kinst::amd64_syscall:'
+dtrace: description 'kinst::amd64_syscall:' matched 458 probes
+CPU     ID                    FUNCTION:NAME
+  2  80676                amd64_syscall:323
+  2  80677                amd64_syscall:326
+  2  80678                amd64_syscall:334
+  2  80679                amd64_syscall:339
+  2  80680                amd64_syscall:345
+  2  80681                amd64_syscall:353
+  ^C
+.Ed
+.Pp
+Trace the return point of
+.Fn critical_enter ,
+which is an inline function:
+.Bd -literal -offset indent
+# dtrace -n 'kinst::critical_enter:return'
+dtrace: description 'kinst::critical_enter:return' matched 130 probes
+CPU     ID                    FUNCTION:NAME
+  1  71024                spinlock_enter:53
+  0  71024                spinlock_enter:53
+  1  70992                uma_zalloc_arg:49
+  1  70925    malloc_type_zone_allocated:21
+  1  70994                uma_zfree_arg:365
+  1  70924             malloc_type_freed:21
+  1  71024                spinlock_enter:53
+  0  71024                spinlock_enter:53
+  0  71024                spinlock_enter:53
+  0  71024                spinlock_enter:53
+  1  71024                spinlock_enter:53
+  0  71024                spinlock_enter:53
+  0  70947         _epoch_enter_preempt:122
+  0  70949           _epoch_exit_preempt:28
+  0  71024                spinlock_enter:53
+  0  71024                spinlock_enter:53
+  0  70947         _epoch_enter_preempt:122
+  0  70949           _epoch_exit_preempt:28
+  ^C
 .Ed
 .Sh SEE ALSO
-.Xr dtrace 1
+.Xr dtrace 1 ,
+.Xr arch 7
 .Sh HISTORY
 The
 .Nm kinst
@@ -87,5 +181,12 @@ provider first appeared in
 .Fx
 14.0.
 .Sh AUTHORS
-This manual page was written by
-.An Christos Margiolis Aq Mt christos@FreeBSD.org .
+.Nm kinst
+was co-authored by
+.An Christos Margiolis Aq Mt christos@FreeBSD.org
+and
+.An Mark Johnston Aq Mt markj@FreeBSD.org .
+.Sh BUGS
+A micro-optimization in the arm64 exception handler breaks the emulation of
+the ADR and ADRP instructions in arm64.
+Tracing of these two instructions is disabled by default as a workaround.
