@@ -497,9 +497,7 @@ sysctl_dev_pcm_vchanrate(SYSCTL_HANDLER_ARGS)
 	KASSERT(direction == c->direction, ("%s(): invalid direction %d/%d",
 	    __func__, direction, c->direction));
 
-	CHN_LOCK(c);
-	newspd = c->speed;
-	CHN_UNLOCK(c);
+	newspd = *vchanrate;
 
 	ret = sysctl_handle_int(oidp, &newspd, 0, req);
 	if (ret != 0 || req->newptr == NULL) {
@@ -605,14 +603,10 @@ sysctl_dev_pcm_vchanformat(SYSCTL_HANDLER_ARGS)
 	KASSERT(direction == c->direction, ("%s(): invalid direction %d/%d",
 	    __func__, direction, c->direction));
 
-	CHN_LOCK(c);
-
 	bzero(fmtstr, sizeof(fmtstr));
 
-	if (snd_afmt2str(c->format, fmtstr, sizeof(fmtstr)) != c->format)
+	if (snd_afmt2str(*vchanformat, fmtstr, sizeof(fmtstr)) != *vchanformat)
 		strlcpy(fmtstr, "<ERROR>", sizeof(fmtstr));
-
-	CHN_UNLOCK(c);
 
 	ret = sysctl_handle_string(oidp, fmtstr, sizeof(fmtstr), req);
 	if (ret != 0 || req->newptr == NULL) {
