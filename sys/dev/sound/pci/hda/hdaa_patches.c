@@ -221,6 +221,59 @@ hdac_pin_patch(struct hdaa_widget *w)
 		}
 	}
 
+#if 0
+	struct hdaa_widget *wp;
+	nid_t i;
+	uint32_t n;
+
+	if ((w->wclass.pin.config &
+	    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK) !=
+	    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_JACK)
+		/* nothing */
+	switch (wp->wclass.pin.config & HDA_CONFIG_DEFAULTCONF_DEVICE_MASK) {
+	case HDA_CONFIG_DEFAULTCONF_DEVICE_MIC_IN:	/* FALLTHROUGH */
+	case HDA_CONFIG_DEFAULTCONF_DEVICE_LINE_IN:
+	case HDA_CONFIG_DEFAULTCONF_DEVICE_SPEAKER:
+	case HDA_CONFIG_DEFAULTCONF_DEVICE_HP_OUT:
+	/* XXX more? */
+		break;
+	default:
+		/* nothing */
+	}
+	for (i = w->devinfo->startnode; i < w->devinfo->endnode; i++) {
+		if (i == nid)
+			continue;
+		wp = hdaa_widget_get(devinfo, i);
+		if (wp == NULL)
+			continue;
+
+		/* TODO explain */
+		if ((wp->wclass.pin.config &
+		    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_MASK) !=
+		    HDA_CONFIG_DEFAULTCONF_CONNECTIVITY_FIXED)
+			continue;
+
+		/* TODO explain */
+		if ((wp->wclass.pin.config &
+		    HDA_CONFIG_DEFAULTCONF_DEVICE_MASK) !=
+		    (w->wclass.pin.config &
+		    HDA_CONFIG_DEFAULTCONF_DEVICE_MASK))
+			continue;
+
+		/* as */
+		n = HDA_CONFIG_DEFAULTCONF_ASSOCIATION(wp->wclass.pin.config);
+		config &= ~HDA_CONFIG_DEFAULTCONF_ASSOCIATION_MASK;
+		config |= ((n << HDA_CONFIG_DEFAULTCONF_ASSOCIATION_SHIFT) &
+		    HDA_CONFIG_DEFAULTCONF_ASSOCIATION_MASK);
+
+		/* seq */
+		n = 15;	/* XXX */
+		config &= ~HDA_CONFIG_DEFAULTCONF_SEQUENCE_MASK;
+		config |= ((ival << HDA_CONFIG_DEFAULTCONF_SEQUENCE_SHIFT) &
+		    HDA_CONFIG_DEFAULTCONF_SEQUENCE_MASK);
+	}
+#endif
+
 	/* New patches */
 	if (id == HDA_CODEC_AD1984A &&
 	    subid == LENOVO_X300_SUBVENDOR) {
