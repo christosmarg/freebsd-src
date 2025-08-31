@@ -115,7 +115,8 @@ SUBDIR=	${SUBDIR_BOOTSTRAP} \
 	libz \
 	libzstd \
 	ncurses \
-	nss_tacplus
+	nss_tacplus \
+	virtual_oss
 
 # Inter-library dependencies.  When the makefile for a library contains LDADD
 # libraries, those libraries should be listed as build order dependencies here.
