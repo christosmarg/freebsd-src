@@ -721,7 +721,8 @@ hdspchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
 	    SND_FORMAT(AFMT_S32_LE, hdsp_port_slot_count(ch->ports, 192000), 0);
 	ch->cap_fmts[3] = 0;
 
-	ch->caps = malloc(sizeof(struct pcmchan_caps), M_HDSP, M_NOWAIT);
+	ch->caps = malloc(sizeof(struct pcmchan_caps), M_HDSP,
+	    M_WAITOK | M_ZERO);
 	*(ch->caps) = (struct pcmchan_caps) {32000, 192000, ch->cap_fmts, 0};
 
 	/* HDSP 9652 does not support quad speed sample rates. */
@@ -732,7 +733,7 @@ hdspchan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
 
 	/* Allocate maximum buffer size. */
 	ch->size = HDSP_CHANBUF_SIZE * hdsp_port_slot_count_max(ch->ports);
-	ch->data = malloc(ch->size, M_HDSP, M_NOWAIT);
+	ch->data = malloc(ch->size, M_HDSP, M_WAITOK | M_ZERO);
 	ch->position = 0;
 
 	ch->buffer = b;

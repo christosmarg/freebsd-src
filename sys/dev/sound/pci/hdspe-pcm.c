@@ -711,12 +711,13 @@ hdspechan_init(kobj_t obj, void *devinfo, struct snd_dbuf *b,
 	ch->cap_fmts[2] =
 	    SND_FORMAT(AFMT_S32_LE, hdspe_channel_count(ch->ports, 8), 0);
 	ch->cap_fmts[3] = 0;
-	ch->caps = malloc(sizeof(struct pcmchan_caps), M_HDSPE, M_NOWAIT);
+	ch->caps = malloc(sizeof(struct pcmchan_caps), M_HDSPE,
+	    M_WAITOK | M_ZERO);
 	*(ch->caps) = (struct pcmchan_caps) {32000, 192000, ch->cap_fmts, 0};
 
 	/* Allocate maximum buffer size. */
 	ch->size = HDSPE_CHANBUF_SIZE * hdspe_channel_count(ch->ports, 8);
-	ch->data = malloc(ch->size, M_HDSPE, M_NOWAIT);
+	ch->data = malloc(ch->size, M_HDSPE, M_WAITOK | M_ZERO);
 	ch->position = 0;
 
 	ch->buffer = b;
